@@ -25,11 +25,15 @@ def fill_nan(arr):
 
 
 def reconstruct_data(arr, neofs=16):
+    if type(neofs) == int:
+        neofs = [neofs]
+
     solver = Eof(arr, center=False)
-    reconstructed = solver.reconstructedField(neofs=neofs)
-    pcs = solver.pcs(npcs=neofs)
-    eofs = solver.eofs(neofs=neofs)
-    return reconstructed, pcs, eofs
+    for n in neofs: 
+        reconstructed = solver.reconstructedField(neofs=n)
+        pcs = solver.pcs(npcs=n)
+        eofs = solver.eofs(neofs=n)
+        yield reconstructed, pcs, eofs
 
 
 def timestamp_to_features(timestamps):
@@ -48,6 +52,6 @@ if __name__ == '__main__':
     y = fill_nan(y)
     y = fill_outliers(y)
     np.savez('data/raw_maps', x=x, y=y)
-    for neofs in range(1, 30):
-        reconstructed, pcs, eofs = reconstruct_data(y, neofs=neofs)
-        np.savez('data/reconstructed_maps(neofs=%i)' % neofs, x=x, y=y, pcs=pcs, eofs=eofs)
+    neofs = np.arange(1, 31)
+    for neofs, (reconstructed, pcs, eofs,) in zip(neofs, reconstruct_data(y, neofs)):
+        np.savez('data/reconstructed_maps(neofs=%i)' % neofs, x=x, y=reconstructed, pcs=pcs, eofs=eofs)
