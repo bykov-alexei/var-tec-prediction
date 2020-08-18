@@ -3,6 +3,8 @@ from keras import layers, models, callbacks, optimizers
 from tensorflow.keras.models import load_model
 import pickle as pkl
 
+from layers.EofLayer import EofLayer
+
 
 def load(filename):
     model = load_model('models/'+filename)
@@ -36,11 +38,12 @@ def conv_model(x, y, name='', loss='mse', optimizer='adam'):
     model.compile(loss=loss, optimizer=optimizer)
     return model
 
-def coef_model(x, y, name='', hidden_layer_neurons=5, loss='mse', optimizer='adam'):
+def coef_model(x, y, eofs, name='', hidden_layer_neurons=5, loss='mse', optimizer='adam'):
     inp = layers.Input(shape=x[0].shape)
-    layer = layers.Dense(hidden_layer_neurons)(inp)
-    layer = layers.Dense(np.prod(y[0].shape), activation='relu')(layer)
-    layer = layers.Reshape(y[0].shape)(layer)
+    layer = layers.Dense(hidden_layer_neurons, activation='relu')(inp)
+    layer = layers.Flatten()(layer)
+    layer = layers.Dense(len(eofs))(layer)
+    layer = EofLayer(eofs)(layer)
 
     model = models.Model(inp, layer, name=name)
     model.compile(loss=loss, optimizer=optimizer)
@@ -62,7 +65,6 @@ def coef_predict(model, x, eofs):
 
 def fit_model(x_train, x_test, y_train, y_test, model, epochs=1):
     reduce_rl = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=0.001)
-    tensor_board = callbacks.TensorBoard(log_dir='./logs')
     early_stopping = callbacks.EarlyStopping(monitor='val_loss', min_delta=0.2, patience=10, restore_best_weights=True)
     model_checkpoint = callbacks.ModelCheckpoint(filepath='models/weights/%s-epoch-{epoch}.h5' % model.name)
 
@@ -71,7 +73,6 @@ def fit_model(x_train, x_test, y_train, y_test, model, epochs=1):
                         epochs=epochs,
                         callbacks=[
                             reduce_rl,
-                            tensor_board,
                             early_stopping,
                             model_checkpoint,
                         ])

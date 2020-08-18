@@ -9,14 +9,45 @@ import matplotlib.pyplot as plt
 import keras
 from keras import models
 
-from data_loader import load_training_data
+from data_loader import load_training_data, load_reconstructed_training_data
 from models import predict, load_model
 
-print(os.listdir('models'))
+def plot_losses(ax, loss, val_loss=None, name=None):
+    ax.plot(loss, label='loss')
+    if val_loss:
+        ax.plot(val_loss, label='val_loss')
+    if name:
+        ax.set_title(name)
+    ax.label()
+
+
+def plot_img(ax, img, name=None, colorbar=True):
+    im = ax.imshow(img)
+    if colorbar:
+        plt.colorbar(im, ax=ax)
+    if name:
+        ax.set_title(name)
+
+
+def get_predictions(model, x):
+    model = load_model('models/'+model)
+    predictions = predict(x, model)
+    del model
+    return predictions
+
+
+def save_fig(fig, title):
+    fig.set_figwidth(16)
+    fig.set_figheight(16)
+    fig.suptitle(model)
+    fig.savefig('predictions/%s.png' % model)
+
 dense_raw = re.compile(r'dense_(\d+)_trained_on_raw_maps')
 dense_reconstructed = re.compile(r'dense_(\d+)_trained_on_reconstructed_maps_neofs_(\d+)')
 conv_raw = re.compile(r'conv_trained_on_raw_maps')
 conv_reconstructed = re.compile(r'conv_trained_on_reconstructed_maps_neofs_(\d+)')
+coef_dense_real = re.compile(r'coef_dense_(\d+)_trained_on_real_neofs_(\d+)')
+coef_dense_reconstructed = re.compile(r'coef_dense_(\d+)_trained_on_real_neofs_(\d+)')
 
 plots = 5
 
@@ -24,59 +55,49 @@ raw_data = np.load('data/raw_maps.npz')
 raw_x, raw_y = raw_data['x'], raw_data['y']
 indices = choices(list(range(len(raw_x))), k=plots)
 
-for folder in os.listdir('models'):
-    is_dense_raw = dense_raw.match(folder)
-    is_dense_reconstructed = dense_reconstructed.match(folder)
-    is_conv_raw = dense_raw.match(folder)
-    print(folder)
+for model in os.listdir('models'):
+    is_dense_raw = dense_raw.match(model)
+    is_dense_reconstructed = dense_reconstructed.match(model)
+    is_conv_raw = dense_raw.match(model)
+    is_coef_dense_real = coef_dense_real.match(model)
+    is_coef_dense_reconstructed = coef_dense_reconstructed.match(model)
+    print(model)
+    match = None
+    if is_dense_raw:
+        match = is_dense_raw
+    elif is_dense_reconstructed:
+        match = is_dense_reconstructed
+    elif is_conv_raw:
+        match = is_conv_raw
+    elif is_coef_dense_real:
+        match = is_coef_dense_real
+    elif is_coef_dense_reconstructed:
+        match = is_coef_dense_reconstructed
+
+
     if is_dense_raw or is_conv_raw:
-        fig, axs = plt.subplots(plots, 2)
+        fig, ax = plt.subplots(plots, 2)
+        predictions = get_predictions(model, raw_x[indices])
+        for i, index in enumerate(indices):
+            plot_img(ax[i][0], raw_y[index], name='raw_data')
+            plot_img(ax[i][1], predictions[i], name='prediction')
 
-        model = load_model('models/'+folder)
-        predictions = predict(raw_x[indices], model)
-        del model
+        save_fig(fig, model)
+    
+    if is_dense_reconstructed or is_coef_dense_reconstructed or is_coef_dense_real: 
+        fig, ax = plt.subplots(plots, 3)
 
-        fig, axs = plt.subplots(plots, 2)
-        fig.set_figwidth(16)
-        fig.set_figheight(16)
-        for i, ax in enumerate(axs):
-            im = ax[0].imshow(raw_y[indices[i]])
-            ax[0].set_title('raw_data')
-            plt.colorbar(im, ax=ax[0])
-
-            im = ax[1].imshow(predictions[i])
-            ax[1].set_title('predicted')
-            plt.colorbar(im, ax=ax[1])
+        neofs = int(match.group(2))
         
-        fig.savefig('predictions/%s.png' % folder)
-        
-    if is_dense_reconstructed:
-        neofs = int(is_dense_reconstructed.group(2))
+        x, y, pcs, eofs = load_reconstructed_training_data('data/reconstructed_maps(neofs=%i).npz' % neofs)
+        predictions = get_predictions(model, raw_x[indices])
 
-        data = np.load('data/reconstructed(neofs=%i).npz' % neofs)
-        x, y = data['x'], data['y']
-        model = load_model('models/'+folder)
-        predictions = predict(x[indices], model)
-        del model
+        for i, index in enumerate(indices):
+            plot_img(ax[i][0], raw_y[index], name='raw_data')
+            plot_img(ax[i][1], y[index], name='reconstructed')
+            plot_img(ax[i][2], predictions[i], name='predicted')
 
-        fig, axs = plt.subplots(plots, 3)
-        fig.set_figwidth(16)
-        fig.set_figheight(16)
-        for i, ax in enumerate(axs):
-            im = ax[0].imshow(raw_y[indices[i]])
-            ax[0].set_title('raw_data')
-            plt.colorbar(im, ax=ax[0])
+        save_fig(fig, model)
 
-            im = ax[1].imshow(y[indices[i]])
-            ax[1].set_title('decomposed')
-            plt.colorbar(im, ax=ax[1])
 
-            ax[2].imshow(predictions[i])
-            ax[2].set_title('predicted')
-            plt.colorbar(im, ax=ax[2])
-
-        del x
-        del y
-        fig.savefig('predictions/%s.png' % folder)
-
-        keras.backend.clear_session()
+    keras.backend.clear_session()
