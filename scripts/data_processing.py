@@ -50,5 +50,4 @@ if __name__ == '__main__':
     np.savez('data/raw_maps', x=x, y=y)
     for neofs in range(1, 30):
         reconstructed, pcs, eofs = reconstruct_data(y, neofs=neofs)
-        np.savez('data/reconstructed(neofs=%i)' % neofs, x=x, y=y)
-        np.savez('data/eofs_coefficient(neofs=%i)' % neofs, x=x, y=pcs, eofs=eofs)
+        np.savez('data/reconstructed_maps(neofs=%i)' % neofs, x=x, y=y, pcs=pcs, eofs=eofs)
