@@ -41,9 +41,9 @@ def timestamp_to_features(timestamps):
     for t in timestamps:
         date = datetime.datetime.fromtimestamp(t)
         sdoy = np.sin(date.timetuple().tm_yday * 2 * np.pi / 365)
-        stod = np.sin((date.hour + date.minute * 60) * 2 * np.pi / 24 / 60)
+        stod = np.sin((date.hour * 60 + date.minute) * 2 * np.pi / 24 / 60)
         cdoy = np.cos(date.timetuple().tm_yday * 2 * np.pi / 365)
-        ctod = np.cos((date.hour + date.minute * 60) * 2 * np.pi / 24 / 60)
+        ctod = np.cos((date.hour * 60 + date.minute) * 2 * np.pi / 24 / 60)
         x.append([sdoy, cdoy, stod, ctod])
     return x
 
