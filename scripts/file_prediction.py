@@ -4,11 +4,16 @@ from data_loader import load_data
 
 import numpy as np
 
-name = input()
 
-times, _ = load_data('var_tec_reshape.npz')
-model = load_model('models/%s' % name)
-x = timestamp_to_features(times)
-p = predict(x, model)
+def get_file(name):
+    times, _ = load_data('var_tec_reshape.npz')
+    model = load_model('models/%s' % name)
+    x = timestamp_to_features(times)
+    p = predict(x, model)
 
-np.savez(name, times=times, var_tec_maps=p)
+    np.savez('data/'+name, times=times, var_tec_maps=p)
+
+
+if __name__ == '__main__':
+    name = input()
+    predict(name)
